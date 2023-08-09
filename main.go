@@ -14,6 +14,7 @@ import (
 
 type Memo struct {
 	f     Func
+	mu    sync.Mutex // guards cache
 	cache map[string]result
 }
 
@@ -29,11 +30,13 @@ func New(f Func) *Memo {
 }
 
 func (memo *Memo) Get(key string) (interface{}, error) {
+	memo.mu.Lock()
 	res, ok := memo.cache[key]
 	if !ok {
 		res.value, res.err = memo.f(key)
 		memo.cache[key] = res
 	}
+	memo.mu.Unlock()
 	return res.value, res.err
 }
 
@@ -98,8 +101,7 @@ func Concurrent(m M) {
 				log.Print(err)
 				return
 			}
-			fmt.Printf("%s, %s, %d bytes\n",
-				url, time.Since(start), len(value.([]byte)))
+			fmt.Printf("%s, %s, %d bytes\n", url, time.Since(start), len(value.([]byte)))
 		}(url)
 	}
 	n.Wait()
